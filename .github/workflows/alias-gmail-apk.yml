@@ -34,11 +34,18 @@ jobs:
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           test -d "$ANDROID_HOME"
-          command -v sdkmanager || true
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Reconstruct verified project ZIP
+        shell: bash
+        run: |
+          cat .ci/alias-gmail/chunk-* > project.b64
+          base64 -d project.b64 > alias-gmail-react-native-verified.zip
+          echo "239aa390d942b94b35dc27bb7bc669db8bcb06f2ef720c22c84f37fb34805592  alias-gmail-react-native-verified.zip" | sha256sum -c -
+          unzip -t alias-gmail-react-native-verified.zip
 
       - name: Extract React Native project
         run: |
