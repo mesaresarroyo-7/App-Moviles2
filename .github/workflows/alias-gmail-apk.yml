@@ -65,6 +65,7 @@ jobs:
         working-directory: buildsrc/AliasGmail-ReactNative-Verified
         run: |
           npm install --no-audit --no-fund --save-dev @types/node@24
+          node -e 'const fs=require("fs"); const p="tsconfig.json"; const j=JSON.parse(fs.readFileSync(p,"utf8")); j.compilerOptions={...(j.compilerOptions||{}),types:["node"]}; fs.writeFileSync(p,JSON.stringify(j,null,2)+"\n");'
           npx tsc --noEmit
 
       - name: Alias logic tests
