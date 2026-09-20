@@ -1,0 +1,110 @@
+name: Build Alias Gmail Android APK
+
+on:
+  push:
+    branches:
+      - alias-gmail-react-native-apk
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 36 tools
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Extract React Native project
+        run: |
+          rm -rf buildsrc
+          mkdir buildsrc
+          unzip -q alias-gmail-react-native-verified.zip -d buildsrc
+          test -f buildsrc/AliasGmail-ReactNative-Verified/package.json
+
+      - name: Install dependencies
+        working-directory: buildsrc/AliasGmail-ReactNative-Verified
+        run: npm install --no-audit --no-fund
+
+      - name: Expo dependency diagnostics
+        working-directory: buildsrc/AliasGmail-ReactNative-Verified
+        run: npx expo-doctor
+
+      - name: TypeScript check
+        working-directory: buildsrc/AliasGmail-ReactNative-Verified
+        run: npx tsc --noEmit
+
+      - name: Alias logic tests
+        working-directory: buildsrc/AliasGmail-ReactNative-Verified
+        run: npx --yes tsx scripts/test-alias.ts
+
+      - name: Generate Android project
+        working-directory: buildsrc/AliasGmail-ReactNative-Verified
+        env:
+          CI: "1"
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build signed debug APK
+        working-directory: buildsrc/AliasGmail-ReactNative-Verified/android
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Locate APK
+        id: apk
+        shell: bash
+        run: |
+          APK="$(find buildsrc/AliasGmail-ReactNative-Verified/android/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
+          test -n "$APK"
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "Found APK: $APK"
+
+      - name: Verify APK ZIP
+        run: unzip -t "${{ steps.apk.outputs.path }}"
+
+      - name: Verify APK signature
+        shell: bash
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose --print-certs "${{ steps.apk.outputs.path }}"
+
+      - name: Verify APK alignment
+        shell: bash
+        run: |
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -n 1)"
+          "$ZIPALIGN" -c -P 16 -v 4 "${{ steps.apk.outputs.path }}"
+
+      - name: Inspect Android package
+        shell: bash
+        run: |
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          "$AAPT" dump badging "${{ steps.apk.outputs.path }}" | head -n 25
+
+      - name: SHA-256
+        run: sha256sum "${{ steps.apk.outputs.path }}"
+
+      - name: Upload verified APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AliasGmail-S26Ultra-APK
+          path: "${{ steps.apk.outputs.path }}"
+          if-no-files-found: error
+          retention-days: 14
