@@ -63,7 +63,9 @@ jobs:
 
       - name: TypeScript check
         working-directory: buildsrc/AliasGmail-ReactNative-Verified
-        run: npx tsc --noEmit
+        run: |
+          npm install --no-audit --no-fund --save-dev @types/node@24
+          npx tsc --noEmit
 
       - name: Alias logic tests
         working-directory: buildsrc/AliasGmail-ReactNative-Verified
