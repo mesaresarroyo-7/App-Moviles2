@@ -32,7 +32,6 @@ jobs:
       - name: Verify Android SDK
         shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
           test -d "$ANDROID_HOME"
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
           test -x "$SDKMANAGER"
@@ -44,7 +43,7 @@ jobs:
         run: |
           cat .ci/alias-gmail/chunk-* > project.b64
           base64 -d project.b64 > alias-gmail-react-native-verified.zip
-          echo "239aa390d942b94b35dc27bb7bc669db8bcb06f2ef720c22c84f37fb34805592  alias-gmail-react-native-verified.zip" | sha256sum -c -
+          echo "e21addb673fb953642c918367bc79ea5c6c805469e7a12655db478a7d8c77c95  alias-gmail-react-native-verified.zip" | sha256sum -c -
           unzip -t alias-gmail-react-native-verified.zip
 
       - name: Extract React Native project
@@ -87,7 +86,6 @@ jobs:
           APK="$(find buildsrc/AliasGmail-ReactNative-Verified/android/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
           echo "path=$APK" >> "$GITHUB_OUTPUT"
-          echo "Found APK: $APK"
 
       - name: Verify APK ZIP
         run: unzip -t "${{ steps.apk.outputs.path }}"
